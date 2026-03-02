@@ -158,17 +158,25 @@ sock.ev.on('connection.update', async (update) => {
 });
 `;
 
-    const output = execSync(
-      `node --input-type=module -e ${JSON.stringify(syncScript)}`,
-      {
+    // Write script to temp file to avoid shell escaping issues
+    const tmpFile = path.join(projectRoot, '.sync-groups-temp.mjs');
+    fs.writeFileSync(tmpFile, syncScript);
+
+    try {
+      const output = execSync(`node ${tmpFile}`, {
         cwd: projectRoot,
         encoding: 'utf-8',
         timeout: 45000,
         stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    );
-    syncOk = output.includes('SYNCED:');
-    logger.info({ output: output.trim() }, 'Sync output');
+      });
+      syncOk = output.includes('SYNCED:');
+      logger.info({ output: output.trim() }, 'Sync output');
+    } finally {
+      // Clean up temp file
+      if (fs.existsSync(tmpFile)) {
+        fs.unlinkSync(tmpFile);
+      }
+    }
   } catch (err) {
     logger.error({ err }, 'Sync failed');
   }

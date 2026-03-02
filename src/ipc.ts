@@ -14,6 +14,7 @@ import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import { RegisteredGroup } from './types.js';
+import { executeCalendarCommand, CalendarTask } from './calendar-service.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -170,6 +171,10 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For calendar
+    action?: string;
+    requestId?: string;
+    params?: Record<string, unknown>;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -378,6 +383,35 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'calendar':
+      // Handle calendar operations via host script
+      if (data.action && data.requestId) {
+        const calendarTask = data as CalendarTask & { requestId: string };
+        const result = executeCalendarCommand(calendarTask);
+
+        // Write response back to IPC
+        const responseDir = path.join(
+          DATA_DIR,
+          'ipc',
+          sourceGroup,
+          'responses',
+        );
+        fs.mkdirSync(responseDir, { recursive: true });
+        const responsePath = path.join(
+          responseDir,
+          `${data.requestId}.json`,
+        );
+        fs.writeFileSync(responsePath, JSON.stringify(result));
+
+        logger.info(
+          { action: data.action, requestId: data.requestId, success: result.success },
+          'Calendar operation completed',
+        );
+      } else {
+        logger.warn({ data }, 'Invalid calendar request - missing action or requestId');
       }
       break;
 

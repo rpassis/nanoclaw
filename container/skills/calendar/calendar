@@ -1,0 +1,184 @@
+#!/bin/bash
+# Calendar tool for container agents
+# Communicates with host via IPC to execute calendar commands
+
+set -e
+
+IPC_DIR="/workspace/ipc"
+TASKS_DIR="$IPC_DIR/tasks"
+RESPONSES_DIR="$IPC_DIR/responses"
+TIMEOUT=10
+DEBUG="${DEBUG:-0}"
+
+# Unified error handler
+handle_error() {
+    echo "{\"success\":false,\"error\":\"$1\"}"
+    exit 1
+}
+
+# Debug logger
+debug() {
+    [ "$DEBUG" = "1" ] && echo "[DEBUG] $*" >&2
+}
+
+show_help() {
+    cat << 'EOF'
+calendar - Manage Apple Calendar events (via host IPC)
+
+Usage:
+  calendar list [days]              List events (default: next 7 days)
+  calendar add <title> <date> <time> [duration] [notes]
+  calendar search <query>           Search events by title
+  calendar delete <event-id>        Delete an event
+  calendar today                    Show today's events
+  calendar tomorrow                 Show tomorrow's events
+
+Examples:
+  calendar list                     # Next 7 days
+  calendar today
+  calendar add "Team meeting" "2026-03-05" "14:00" "1h" "Discuss Q1"
+  calendar add "Dentist" "tomorrow" "9:30" "30m"
+  calendar search "meeting"
+  calendar delete "Team meeting"
+
+Date formats: YYYY-MM-DD, "today", "tomorrow", "+N days"
+Time format: HH:MM (24-hour)
+Duration: "1h", "30m", "1h30m"
+
+Environment:
+  DEBUG=1 - Enable debug logging
+EOF
+}
+
+# Generate unique request ID
+generate_request_id() {
+    echo "cal_$(date +%s)_$$_$RANDOM"
+}
+
+# Wait for response with timeout
+wait_for_response() {
+    local request_id="$1"
+    local response_file="$RESPONSES_DIR/${request_id}.json"
+    local max_attempts=$((TIMEOUT * 10))  # 10 checks per second
+    local attempt=0
+
+    debug "Waiting for response: $response_file (timeout: ${TIMEOUT}s)"
+
+    while [ $attempt -lt $max_attempts ]; do
+        if [ -f "$response_file" ]; then
+            debug "Response received after $((attempt / 10)).$((attempt % 10))s"
+            cat "$response_file"
+            rm -f "$response_file"
+            return 0
+        fi
+        sleep 0.1
+        attempt=$((attempt + 1))
+    done
+
+    handle_error "Request timeout - host did not respond within ${TIMEOUT}s"
+}
+
+# Build JSON params (helper to avoid manual escaping)
+build_params() {
+    local json="{"
+    local first=1
+
+    while [ $# -gt 0 ]; do
+        [ $first -eq 0 ] && json="${json},"
+        json="${json}\"$1\":\"$2\""
+        first=0
+        shift 2
+    done
+
+    json="${json}}"
+    echo "$json"
+}
+
+# Send IPC request
+send_request() {
+    local request_id="$1"
+    local action="$2"
+    shift 2
+
+    local task_file="$TASKS_DIR/${request_id}.json"
+    local json="{\"type\":\"calendar\",\"requestId\":\"$request_id\",\"action\":\"$action\""
+
+    # Add params if provided
+    if [ $# -gt 0 ]; then
+        json="${json},\"params\":$(build_params "$@")"
+    fi
+
+    json="${json}}"
+
+    debug "Sending request: $action (id: $request_id)"
+    echo "$json" > "$task_file"
+
+    wait_for_response "$request_id"
+}
+
+# Main command dispatcher
+case "${1:-}" in
+    list)
+        request_id=$(generate_request_id)
+        days="${2:-7}"
+        send_request "$request_id" "list" "days" "$days"
+        ;;
+
+    today)
+        request_id=$(generate_request_id)
+        send_request "$request_id" "today"
+        ;;
+
+    tomorrow)
+        request_id=$(generate_request_id)
+        send_request "$request_id" "tomorrow"
+        ;;
+
+    add)
+        [ -z "$2" ] && handle_error "Missing title"
+        [ -z "$3" ] && handle_error "Missing date"
+        [ -z "$4" ] && handle_error "Missing time"
+
+        request_id=$(generate_request_id)
+        title="$2"
+        date="$3"
+        time="$4"
+        duration="${5:-1h}"
+        notes="${6:-}"
+
+        if [ -n "$notes" ]; then
+            send_request "$request_id" "add" \
+                "title" "$title" \
+                "date" "$date" \
+                "time" "$time" \
+                "duration" "$duration" \
+                "notes" "$notes"
+        else
+            send_request "$request_id" "add" \
+                "title" "$title" \
+                "date" "$date" \
+                "time" "$time" \
+                "duration" "$duration"
+        fi
+        ;;
+
+    search)
+        [ -z "$2" ] && handle_error "Missing search query"
+        request_id=$(generate_request_id)
+        send_request "$request_id" "search" "query" "$2"
+        ;;
+
+    delete)
+        [ -z "$2" ] && handle_error "Missing event title"
+        request_id=$(generate_request_id)
+        send_request "$request_id" "delete" "title" "$2"
+        ;;
+
+    help|--help|-h|"")
+        show_help
+        ;;
+
+    *)
+        handle_error "Unknown command: $1"
+        ;;
+esac
