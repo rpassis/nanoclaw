@@ -223,9 +223,35 @@ func listTomorrow() {
     }
 }
 
+// List available calendars
+func listCalendars() {
+    let calendars = store.calendars(for: .event)
+    if calendars.isEmpty {
+        print("No calendars found")
+        return
+    }
+    let defaultCal = store.defaultCalendarForNewEvents
+    print("Available calendars:")
+    for cal in calendars.sorted(by: { $0.title < $1.title }) {
+        let marker = cal.calendarIdentifier == defaultCal?.calendarIdentifier ? " (default)" : ""
+        print("  \(cal.title)\(marker)")
+    }
+}
+
 // Add a new event
-func addEvent(title: String, dateStr: String, timeStr: String, durationStr: String = "1h", notes: String = "") {
-    guard let calendar = store.defaultCalendarForNewEvents else {
+func addEvent(title: String, dateStr: String, timeStr: String, durationStr: String = "1h", notes: String = "", calendarName: String = "") {
+    let calendar: EKCalendar?
+    if calendarName.isEmpty {
+        calendar = store.defaultCalendarForNewEvents
+    } else {
+        calendar = store.calendars(for: .event).first(where: { $0.title == calendarName })
+        if calendar == nil {
+            printError("Calendar '\(calendarName)' not found. Run 'calendars' to list available calendars.")
+            exit(1)
+        }
+    }
+
+    guard let cal = calendar else {
         printError("No default calendar found")
         exit(1)
     }
@@ -237,7 +263,7 @@ func addEvent(title: String, dateStr: String, timeStr: String, durationStr: Stri
 
     let event = EKEvent(eventStore: store)
     event.title = title
-    event.calendar = calendar
+    event.calendar = cal
     event.startDate = startDate
 
     let durationMinutes = parseDuration(durationStr)
@@ -249,7 +275,7 @@ func addEvent(title: String, dateStr: String, timeStr: String, durationStr: Stri
 
     do {
         try store.save(event, span: .thisEvent)
-        print("Created: \(title) on \(dateStr) at \(timeStr) for \(durationStr)")
+        print("Created: \(title) on \(dateStr) at \(timeStr) for \(durationStr) in '\(cal.title)'")
     } catch {
         printError("Failed to create event: \(error.localizedDescription)")
         exit(1)
@@ -336,9 +362,12 @@ case "today":
 case "tomorrow":
     listTomorrow()
 
+case "calendars":
+    listCalendars()
+
 case "add":
     guard args.count >= 5 else {
-        printError("Usage: calendar add <title> <date> <time> [duration] [notes]")
+        printError("Usage: calendar add <title> <date> <time> [duration] [notes] [calendarName]")
         exit(1)
     }
     let title = args[2]
@@ -346,7 +375,8 @@ case "add":
     let timeStr = args[4]
     let duration = args.count > 5 ? args[5] : "1h"
     let notes = args.count > 6 ? args[6] : ""
-    addEvent(title: title, dateStr: dateStr, timeStr: timeStr, durationStr: duration, notes: notes)
+    let calendarName = args.count > 7 ? args[7] : ""
+    addEvent(title: title, dateStr: dateStr, timeStr: timeStr, durationStr: duration, notes: notes, calendarName: calendarName)
 
 case "search":
     guard args.count >= 3 else {

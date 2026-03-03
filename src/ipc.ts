@@ -171,10 +171,10 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
-    // For calendar
+    // For calendar tasks
     action?: string;
     requestId?: string;
-    params?: Record<string, unknown>;
+    params?: Record<string, string | number>;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -400,18 +400,22 @@ export async function processTaskIpc(
           'responses',
         );
         fs.mkdirSync(responseDir, { recursive: true });
-        const responsePath = path.join(
-          responseDir,
-          `${data.requestId}.json`,
-        );
+        const responsePath = path.join(responseDir, `${data.requestId}.json`);
         fs.writeFileSync(responsePath, JSON.stringify(result));
 
         logger.info(
-          { action: data.action, requestId: data.requestId, success: result.success },
+          {
+            action: data.action,
+            requestId: data.requestId,
+            success: result.success,
+          },
           'Calendar operation completed',
         );
       } else {
-        logger.warn({ data }, 'Invalid calendar request - missing action or requestId');
+        logger.warn(
+          { data },
+          'Invalid calendar request - missing action or requestId',
+        );
       }
       break;
 

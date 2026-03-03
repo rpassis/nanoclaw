@@ -26,18 +26,19 @@ show_help() {
 calendar - Manage Apple Calendar events (via host IPC)
 
 Usage:
-  calendar list [days]              List events (default: next 7 days)
-  calendar add <title> <date> <time> [duration] [notes]
-  calendar search <query>           Search events by title
-  calendar delete <event-id>        Delete an event
   calendar today                    Show today's events
   calendar tomorrow                 Show tomorrow's events
+  calendar list [days]              List events (default: next 7 days)
+  calendar calendars                List available calendars
+  calendar add <title> <date> <time> [duration] [notes] [--calendar <name>]
+  calendar search <query>           Search events by title
+  calendar delete <title>           Delete an event by title
 
 Examples:
-  calendar list                     # Next 7 days
   calendar today
+  calendar calendars
   calendar add "Team meeting" "2026-03-05" "14:00" "1h" "Discuss Q1"
-  calendar add "Dentist" "tomorrow" "9:30" "30m"
+  calendar add "Dentist" "tomorrow" "9:30" "30m" --calendar "Personal"
   calendar search "meeting"
   calendar delete "Team meeting"
 
@@ -134,6 +135,11 @@ case "${1:-}" in
         send_request "$request_id" "tomorrow"
         ;;
 
+    calendars)
+        request_id=$(generate_request_id)
+        send_request "$request_id" "calendars"
+        ;;
+
     add)
         [ -z "$2" ] && handle_error "Missing title"
         [ -z "$3" ] && handle_error "Missing date"
@@ -145,21 +151,22 @@ case "${1:-}" in
         time="$4"
         duration="${5:-1h}"
         notes="${6:-}"
+        calendar_name=""
 
-        if [ -n "$notes" ]; then
-            send_request "$request_id" "add" \
-                "title" "$title" \
-                "date" "$date" \
-                "time" "$time" \
-                "duration" "$duration" \
-                "notes" "$notes"
-        else
-            send_request "$request_id" "add" \
-                "title" "$title" \
-                "date" "$date" \
-                "time" "$time" \
-                "duration" "$duration"
-        fi
+        # Parse --calendar flag (can appear after positional args)
+        shift 6 2>/dev/null || shift $# 2>/dev/null
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --calendar) calendar_name="$2"; shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        params=("title" "$title" "date" "$date" "time" "$time" "duration" "$duration")
+        [ -n "$notes" ] && params+=("notes" "$notes")
+        [ -n "$calendar_name" ] && params+=("calendarName" "$calendar_name")
+
+        send_request "$request_id" "add" "${params[@]}"
         ;;
 
     search)

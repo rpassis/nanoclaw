@@ -5,10 +5,11 @@ Manage calendar events in the user's Apple Calendar app.
 ## Usage
 
 ```bash
-calendar list [days]              # List upcoming events (default: 7 days)
 calendar today                    # Show today's events
 calendar tomorrow                 # Show tomorrow's events
-calendar add <title> <date> <time> [duration] [notes]
+calendar list [days]              # List upcoming events (default: 7 days)
+calendar calendars                # List available calendars
+calendar add <title> <date> <time> [duration] [notes] [--calendar <name>]
 calendar search <query>           # Search events by title
 calendar delete <event-title>     # Delete event by title
 ```
@@ -34,17 +35,24 @@ calendar tomorrow
 ### Add Events
 
 ```bash
-# Team meeting on specific date
+# Add to default calendar
 calendar add "Team meeting" "2026-03-05" "14:00" "1h" "Discuss Q1 goals"
 
-# Quick event for tomorrow
-calendar add "Dentist" "tomorrow" "9:30" "30m"
+# Add to a specific calendar
+calendar add "Dentist" "tomorrow" "9:30" "30m" --calendar "Personal"
 
-# All-day event (use 00:00 and 24h duration)
-calendar add "Conference" "2026-03-10" "00:00" "24h" "Tech conference"
+# Add with notes to a specific calendar
+calendar add "Conference" "2026-03-10" "09:00" "8h" "Annual tech conf" --calendar "Work"
 
 # Relative dates
 calendar add "Review docs" "+3 days" "15:00" "2h"
+```
+
+### List Calendars
+
+```bash
+# Show all available calendars (with default marked)
+calendar calendars
 ```
 
 ### Search & Delete

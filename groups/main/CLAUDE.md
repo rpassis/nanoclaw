@@ -25,11 +25,14 @@ You are Andy, a personal assistant. You help with tasks, answer questions, and c
 /home/node/.claude/skills/calendar/calendar today
 /home/node/.claude/skills/calendar/calendar tomorrow
 /home/node/.claude/skills/calendar/calendar list 14
-/home/node/.claude/skills/calendar/calendar add "Team meeting" "2026-03-05" "14:00" "1h" "Discuss Q1"
-/home/node/.claude/skills/calendar/calendar add "Dentist" "tomorrow" "09:30" "30m"
+/home/node/.claude/skills/calendar/calendar calendars
+/home/node/.claude/skills/calendar/calendar add "Team meeting" "2026-03-05" "14:00" "1h" "Notes"
+/home/node/.claude/skills/calendar/calendar add "Dentist" "tomorrow" "09:30" "30m" --calendar "Personal"
 /home/node/.claude/skills/calendar/calendar search "query"
 /home/node/.claude/skills/calendar/calendar delete "Event Title"
 ```
+
+When adding an event, if the user specifies a calendar (e.g. "add to Work calendar"), use `--calendar "Work"`. If unsure which calendar to use, run `calendars` first to show available options.
 
 **Date formats:** YYYY-MM-DD, "today", "tomorrow", "+N days"
 **Time format:** 24-hour (HH:MM)

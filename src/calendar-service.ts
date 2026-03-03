@@ -11,7 +11,7 @@ const CALENDAR_BIN = path.join(process.cwd(), 'host-tools', 'calendar-bin');
 
 export interface CalendarTask {
   type: 'calendar';
-  action: 'list' | 'today' | 'tomorrow' | 'add' | 'search' | 'delete';
+  action: 'list' | 'today' | 'tomorrow' | 'calendars' | 'add' | 'search' | 'delete';
   params?: {
     days?: number;
     title?: string;
@@ -19,6 +19,7 @@ export interface CalendarTask {
     time?: string;
     duration?: string;
     notes?: string;
+    calendarName?: string;
     query?: string;
   };
 }
@@ -44,6 +45,7 @@ export function executeCalendarCommand(task: CalendarTask): CalendarResult {
 
       case 'today':
       case 'tomorrow':
+      case 'calendars':
         // No additional args needed
         break;
 
@@ -59,10 +61,9 @@ export function executeCalendarCommand(task: CalendarTask): CalendarResult {
           task.params.date,
           task.params.time,
           task.params.duration || '1h',
+          task.params.notes || '',
+          task.params.calendarName || '',
         );
-        if (task.params.notes) {
-          args.push(task.params.notes);
-        }
         break;
 
       case 'search':
