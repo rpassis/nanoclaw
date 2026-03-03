@@ -10,6 +10,7 @@ calendar tomorrow                 # Show tomorrow's events
 calendar list [days]              # List upcoming events (default: 7 days)
 calendar calendars                # List available calendars
 calendar add <title> <date> <time> [duration] [notes] [--calendar <name>]
+calendar update <title> [--title <new>] [--date <date>] [--time <time>] [--duration <dur>] [--notes <notes>] [--calendar <name>]
 calendar search <query>           # Search events by title
 calendar delete <event-title>     # Delete event by title
 ```
@@ -53,6 +54,25 @@ calendar add "Review docs" "+3 days" "15:00" "2h"
 ```bash
 # Show all available calendars (with default marked)
 calendar calendars
+```
+
+### Update Events
+
+```bash
+# Reschedule to a new time
+calendar update "Team meeting" --time "15:00"
+
+# Move to a different date
+calendar update "Dentist" --date "2026-03-10"
+
+# Rename and move to a different calendar
+calendar update "Team meeting" --title "Q1 Review" --calendar "Work"
+
+# Update notes only
+calendar update "Team meeting" --notes "Bring slides"
+
+# Clear notes
+calendar update "Team meeting" --notes ""
 ```
 
 ### Search & Delete

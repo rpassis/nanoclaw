@@ -31,6 +31,7 @@ Usage:
   calendar list [days]              List events (default: next 7 days)
   calendar calendars                List available calendars
   calendar add <title> <date> <time> [duration] [notes] [--calendar <name>]
+  calendar update <title> [--title <new>] [--date <date>] [--time <time>] [--duration <dur>] [--notes <notes>] [--calendar <name>]
   calendar search <query>           Search events by title
   calendar delete <title>           Delete an event by title
 
@@ -167,6 +168,29 @@ case "${1:-}" in
         [ -n "$calendar_name" ] && params+=("calendarName" "$calendar_name")
 
         send_request "$request_id" "add" "${params[@]}"
+        ;;
+
+    update)
+        [ -z "$2" ] && handle_error "Missing event title"
+
+        request_id=$(generate_request_id)
+        current_title="$2"
+        shift 2
+
+        params=("title" "$current_title")
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --title)    [ -n "$2" ] && params+=("newTitle" "$2");    shift 2 ;;
+                --date)     [ -n "$2" ] && params+=("date" "$2");        shift 2 ;;
+                --time)     [ -n "$2" ] && params+=("time" "$2");        shift 2 ;;
+                --duration) [ -n "$2" ] && params+=("duration" "$2");    shift 2 ;;
+                --notes)    params+=("notes" "${2:-}");                   shift 2 ;;
+                --calendar) [ -n "$2" ] && params+=("calendarName" "$2"); shift 2 ;;
+                *) shift ;;
+            esac
+        done
+
+        send_request "$request_id" "update" "${params[@]}"
         ;;
 
     search)

@@ -309,6 +309,83 @@ func searchEvents(query: String) {
     }
 }
 
+// Update an existing event
+func updateEvent(
+    currentTitle: String,
+    newTitle: String?,
+    dateStr: String?,
+    timeStr: String?,
+    durationStr: String?,
+    notes: String?,
+    calendarName: String?
+) {
+    let calInstance = Calendar.current
+    let now = Date()
+    let end = calInstance.date(byAdding: .year, value: 1, to: now)!
+
+    let predicate = store.predicateForEvents(withStart: now, end: end, calendars: nil)
+    let matching = store.events(matching: predicate).filter { $0.title == currentTitle }
+
+    if matching.isEmpty {
+        printError("No event found with title: \(currentTitle)")
+        exit(1)
+    }
+
+    var updatedCount = 0
+    for event in matching {
+        if let newTitle = newTitle {
+            event.title = newTitle
+        }
+
+        // Handle date/time changes — preserve whichever dimension is not being changed
+        if dateStr != nil || timeStr != nil {
+            let currentDateFmt = DateFormatter()
+            currentDateFmt.dateFormat = "yyyy-MM-dd"
+            let currentTimeFmt = DateFormatter()
+            currentTimeFmt.dateFormat = "HH:mm"
+
+            let targetDate = dateStr ?? currentDateFmt.string(from: event.startDate)
+            let targetTime = timeStr ?? currentTimeFmt.string(from: event.startDate)
+
+            if let newStart = parseDate(targetDate, time: targetTime) {
+                let originalDuration = event.endDate.timeIntervalSince(event.startDate)
+                event.startDate = newStart
+                if let durationStr = durationStr {
+                    let minutes = parseDuration(durationStr)
+                    event.endDate = newStart.addingTimeInterval(Double(minutes * 60))
+                } else {
+                    event.endDate = newStart.addingTimeInterval(originalDuration)
+                }
+            }
+        } else if let durationStr = durationStr {
+            let minutes = parseDuration(durationStr)
+            event.endDate = event.startDate.addingTimeInterval(Double(minutes * 60))
+        }
+
+        if let notes = notes {
+            event.notes = notes.isEmpty ? nil : notes
+        }
+
+        if let calendarName = calendarName {
+            guard let newCal = store.calendars(for: .event).first(where: { $0.title == calendarName }) else {
+                printError("Calendar '\(calendarName)' not found. Run 'calendars' to list available calendars.")
+                exit(1)
+            }
+            event.calendar = newCal
+        }
+
+        do {
+            try store.save(event, span: .thisEvent)
+            updatedCount += 1
+        } catch {
+            printError("Failed to update event: \(error.localizedDescription)")
+        }
+    }
+
+    let displayTitle = newTitle ?? currentTitle
+    print("Updated \(updatedCount) event(s): '\(displayTitle)'")
+}
+
 // Delete event by exact title
 func deleteEvent(title: String) {
     let calendar = Calendar.current
@@ -377,6 +454,37 @@ case "add":
     let notes = args.count > 6 ? args[6] : ""
     let calendarName = args.count > 7 ? args[7] : ""
     addEvent(title: title, dateStr: dateStr, timeStr: timeStr, durationStr: duration, notes: notes, calendarName: calendarName)
+
+case "update":
+    guard args.count >= 3 else {
+        printError("Usage: calendar update <currentTitle> [--title <new>] [--date <date>] [--time <time>] [--duration <dur>] [--notes <notes>] [--calendar <name>]")
+        exit(1)
+    }
+    let currentTitle = args[2]
+    var newTitle: String? = nil
+    var updateDate: String? = nil
+    var updateTime: String? = nil
+    var updateDuration: String? = nil
+    var updateNotes: String? = nil
+    var updateCalendar: String? = nil
+
+    var i = 3
+    while i < args.count {
+        if i + 1 < args.count {
+            switch args[i] {
+            case "--title":    newTitle = args[i+1];        i += 2
+            case "--date":     updateDate = args[i+1];     i += 2
+            case "--time":     updateTime = args[i+1];     i += 2
+            case "--duration": updateDuration = args[i+1]; i += 2
+            case "--notes":    updateNotes = args[i+1];    i += 2
+            case "--calendar": updateCalendar = args[i+1]; i += 2
+            default: i += 1
+            }
+        } else {
+            i += 1
+        }
+    }
+    updateEvent(currentTitle: currentTitle, newTitle: newTitle, dateStr: updateDate, timeStr: updateTime, durationStr: updateDuration, notes: updateNotes, calendarName: updateCalendar)
 
 case "search":
     guard args.count >= 3 else {

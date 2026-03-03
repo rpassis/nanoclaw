@@ -11,10 +11,19 @@ const CALENDAR_BIN = path.join(process.cwd(), 'host-tools', 'calendar-bin');
 
 export interface CalendarTask {
   type: 'calendar';
-  action: 'list' | 'today' | 'tomorrow' | 'calendars' | 'add' | 'search' | 'delete';
+  action:
+    | 'list'
+    | 'today'
+    | 'tomorrow'
+    | 'calendars'
+    | 'add'
+    | 'update'
+    | 'search'
+    | 'delete';
   params?: {
     days?: number;
     title?: string;
+    newTitle?: string;
     date?: string;
     time?: string;
     duration?: string;
@@ -64,6 +73,19 @@ export function executeCalendarCommand(task: CalendarTask): CalendarResult {
           task.params.notes || '',
           task.params.calendarName || '',
         );
+        break;
+
+      case 'update':
+        if (!task.params?.title) {
+          return { success: false, error: 'Missing event title to update' };
+        }
+        args.push(task.params.title);
+        if (task.params.newTitle) args.push('--title', task.params.newTitle);
+        if (task.params.date) args.push('--date', task.params.date);
+        if (task.params.time) args.push('--time', task.params.time);
+        if (task.params.duration) args.push('--duration', task.params.duration);
+        if (task.params.notes !== undefined) args.push('--notes', task.params.notes);
+        if (task.params.calendarName) args.push('--calendar', task.params.calendarName);
         break;
 
       case 'search':
