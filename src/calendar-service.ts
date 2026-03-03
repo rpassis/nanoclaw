@@ -84,8 +84,10 @@ export function executeCalendarCommand(task: CalendarTask): CalendarResult {
         if (task.params.date) args.push('--date', task.params.date);
         if (task.params.time) args.push('--time', task.params.time);
         if (task.params.duration) args.push('--duration', task.params.duration);
-        if (task.params.notes !== undefined) args.push('--notes', task.params.notes);
-        if (task.params.calendarName) args.push('--calendar', task.params.calendarName);
+        if (task.params.notes !== undefined)
+          args.push('--notes', task.params.notes);
+        if (task.params.calendarName)
+          args.push('--calendar', task.params.calendarName);
         break;
 
       case 'search':
