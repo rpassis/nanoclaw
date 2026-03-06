@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker info:*)",
+      "Bash(npx tsx:*)",
+      "Bash(claude config list:*)",
+      "Bash(if [ -f ~/.claude/config.json ])",
+      "Bash(then cat ~/.claude/config.json)",
+      "Bash(else echo \"Config not found\")",
+      "Bash(fi)",
+      "Bash(chmod:*)",
+      "Bash(./container/build.sh:*)",
+      "Bash(python3:*)",
+      "Bash(swiftc:*)",
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(npm test:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:developer.amazon.com)",
+      "WebFetch(domain:aws.amazon.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.npmjs.com)"
+    ]
+  }
+}
